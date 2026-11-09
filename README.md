@@ -1,489 +1,339 @@
 # Proactive Retention Engine 2.0 (PRE 2.0)
-### Real-Time Customer Churn Prediction and Retention Dashboard
 
-[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13+-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org/)
-[![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.3+-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![XGBoost](https://img.shields.io/badge/XGBoost-2.0+-EB5424?style=for-the-badge&logo=xgboost&logoColor=white)](https://xgboost.ai/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+Customer churn risk prediction engine combining structured tabular customer features with unstructured customer support text using a Soft Mixture of Experts (MoE) architecture, a neural gating network, and local LLM-assisted retention strategy generation.
 
----
-
-## Table of Contents
-- [Project Overview](#project-overview)
-- [Key Features](#key-features)
-- [How the System Works](#how-the-system-works)
-- [System Architecture](#system-architecture)
-- [The Prediction Models](#the-prediction-models)
-- [Neural Router and Mixture of Experts](#neural-router-and-mixture-of-experts)
-- [Retention Strategy Generation](#retention-strategy-generation)
-- [Dashboard Features](#dashboard-features)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Installation and Setup](#installation-and-setup)
-- [Running the Application](#running-the-application)
-- [Model Training](#model-training)
-- [Model Files and Large Language Model Setup](#model-files-and-large-language-model-setup)
-- [Frequently Asked Questions](#frequently-asked-questions)
-- [Limitations and Future Improvements](#limitations-and-future-improvements)
-- [License](#license)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Framework](https://img.shields.io/badge/Streamlit-1.28%2B-red.svg)](https://streamlit.io/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13%2B-orange.svg)](https://tensorflow.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-blue.svg)](https://scikit-learn.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## Project Overview
+## 1. Project Overview
 
-**Proactive Retention Engine 2.0 (PRE 2.0)** is an enterprise machine learning solution engineered to detect customer churn before cancellation occurs. 
+Customer churn poses a continuous challenge in subscription-based services. Standard predictive systems usually exhibit critical operational bottlenecks:
 
-Traditional churn prediction models analyze purely structured tabular metrics—such as contract duration, payment method, monthly charges, and tenure. However, early dissatisfaction and customer attrition intent consistently manifest inside unstructured channels: customer support transcripts, issue tickets, and qualitative representative notes.
+- **Single-Modality Dependency**: Most classical models evaluate only numeric account attributes (tenure, billing amount, contract length), discarding qualitative signals from customer interaction logs and support transcripts.
+- **Single-Algorithm Variance**: Isolated models often suffer from bias toward specific feature distributions—tree ensembles perform well on non-linear splits, while kernel methods excel on continuous boundaries.
+- **Unclear Intervention Paths**: Conventional classifiers output binary labels or risk probabilities without offering actionable, context-aware retention steps for customer-facing teams.
 
-PRE 2.0 addresses this blind spot through a multi-modal **Soft Mixture of Experts (MoE)** architecture:
-- **Structured account metrics** are evaluated concurrently by three distinct tabular machine learning algorithms (**XGBoost**, **Support Vector Classifier**, and a **Deep Artificial Neural Network**).
-- **Unstructured support notes** are evaluated using a quantized local language model (**Microsoft Phi-3 Mini 4K Instruct** in 4-bit GGUF format, supported by an automated sentiment fallback engine).
-- A specialized **Neural Gating Router** analyzes both tabular and textual signals to calculate sample-level confidence weights for each expert.
-- An **AI Retention Strategy Generator** synthesizes the customer risk level and interaction context into a concrete, 1–2 sentence "Next Best Action" retention plan.
-- An **Enterprise Glassmorphism Dashboard** built in Streamlit surfaces real-time predictions, model attribution donut charts, and live hardware resource telemetry.
+PRE 2.0 addresses these limitations by pairing **30 engineered tabular features** with **unstructured interaction text**. Predictions are resolved through a **Soft Mixture of Experts (MoE)** network:
 
----
-
-## Key Features
-
-- **Dual-Modal Data Ingestion**: Seamlessly fuses 19 structured customer account attributes (expanded into 30 engineered features) with qualitative natural language support text.
-- **Soft Mixture of Experts (MoE)**: Leverages 4 diverse expert models rather than a monolithic classifier, maximizing ensemble variance reduction and predictive fidelity.
-- **Adaptive Neural Router**: Dynamically calculates per-customer weighting factors using a temperature-scaled gating network, giving precedence to text or tabular features based on data quality.
-- **Generative Retention Strategies**: Translates numerical churn probabilities into immediate operational countermeasures (e.g., promotional credits, priority technical routing, contract restructuring).
-- **Privacy-Preserving Edge Inference**: Employs 4-bit quantized GGUF weights, enabling high-performance local inference on commodity CPUs with zero third-party cloud data transmission.
-- **Resilient Fallback Hierarchy**: Features a zero-crash architecture that gracefully defaults to an internal heuristic sentiment analyzer if local GGUF runtimes are not configured.
-- **Real-Time Hardware Telemetry**: Continuously monitors physical/logical CPU utilization, memory pressure, and storage volume directly within the dashboard.
+1. Three specialized tabular classifiers (**XGBoost**, **SVM with RBF kernel**, **Deep ANN**) evaluate numeric and categorical customer attributes.
+2. A language model expert (**Microsoft Phi-3 Mini 4K Instruct** 4-bit GGUF with a deterministic keyword heuristic fallback) analyzes support interactions.
+3. A **Neural Router** (Keras multi-layer perceptron) processes the combined multimodal feature vector to dynamically distribute normalized trust weights across all four experts.
+4. The final risk prediction is produced via a weighted linear combination of expert probabilities, accompanied by a generated **Next Best Action** retention strategy.
 
 ---
 
-## How the System Works
+## 2. Key Features
 
-The prediction and intervention lifecycle executes across five sequential stages:
-
-```
-[Customer Telemetry] ──> [Feature Pipelines] ──> [4 Expert Inferences] ──> [Soft Gating] ──> [Ensemble & Action]
-```
-
-1. **Input Collection**: Account attributes (tenure, billing method, active services, recurring charges) and recent customer interaction notes are submitted via the interactive sidebar.
-2. **Feature Preprocessing**:
-   - Tabular features undergo missing value imputation, standard scaling for continuous variables (`tenure`, `MonthlyCharges`, `TotalCharges`), and one-hot encoding for categorical variables.
-   - Support notes are tokenized into integer sequence vectors and padded to a fixed sequence length of 15 tokens.
-3. **Multi-Expert Evaluation**:
-   - Tabular features are simultaneously processed by **XGBoost**, **SVM**, and the **Deep ANN**.
-   - Text features are evaluated by **Phi-3 Mini** (or the sentiment fallback engine) to derive an independent sentiment churn risk score.
-4. **Dynamic Gating & Score Fusion**:
-   - The concatenated feature vector (30 tabular + 15 text tokens = 45 dimensions) enters the Keras-based **Neural Router**.
-   - The router applies temperature-scaled softmax weighting across all four models. If rich support complaint text is detected, the router dynamically increases the LLM's contribution.
-   - The final churn probability is computed as the weighted dot product of the expert predictions and router weights:
-     
-     $$\text{Churn Probability} = \sum_{i=1}^{4} w_i \cdot p_i$$
-
-5. **Retention Action & UI Rendering**: Churn probability, individual model breakdowns, dynamic weights, and a tailored "Next Best Action" are visualized immediately on the dashboard.
+- **Multimodal Customer Representation**: Preprocessing pipeline combining tabular scaling, categorical encoding, and text tokenization into a unified feature space.
+- **Soft Mixture of Experts (MoE)**: Dynamic allocation of model influence per inference pass rather than static ensembling or simple majority voting.
+- **Neural Gating Network**: Multi-layer perceptron trained on soft performance targets with temperature scaling ($T = 2.5$) and dynamic context scaling for support notes.
+- **Diverse Expert Pool**:
+  - Gradient boosted decision trees (XGBoost) for non-linear tabular interactions.
+  - Support Vector Machine (RBF Kernel) for soft margin boundary separation.
+  - 3-layer Deep Artificial Neural Network with batch normalization and dropout regularization.
+  - Local quantized 4-bit LLM (Phi-3 Mini 4K Instruct via GGUF) or heuristic fallback for qualitative text analysis.
+- **Prescriptive Retention Recommendations**: Real-time generation of contextual retention playbooks mapped to customer interaction sentiment.
+- **Interactive Web Interface**: Streamlit dashboard providing dynamic customer attribute controls, live MoE weight distribution visualizations, and hardware telemetry monitoring (CPU, RAM, Disk).
 
 ---
 
-## System Architecture
+## 3. System Architecture
 
-The following diagram illustrates the complete end-to-end data processing, expert inference, neural routing, and user interface delivery pipeline:
+The inference pipeline takes structured account attributes and unstructured support notes, normalizes them into numerical representations, queries the neural router and expert models in parallel, and computes the weighted ensemble prediction.
 
 ```mermaid
 flowchart TD
-    subgraph INPUTS["1. Customer Input Layer"]
-        CAD["Customer Account Data<br/>(Tenure, Monthly & Total Charges, Services, Contract)"]
-        CSN["Customer Support Notes<br/>(Unstructured Customer Feedback / Ticket Notes)"]
-    end
+    A1["Structured Customer Data (19 Attributes)"] --> B1["StandardScaler + OneHotEncoder"]
+    A2["Customer Support Notes (Unstructured Text)"] --> B2["Tokenizer and Sequence Padding"]
 
-    subgraph PREP["2. Feature Engineering & Preprocessing"]
-        DP["Data Preprocessing Pipeline<br/>(Median Imputation, StandardScaler, OneHotEncoder)"]
-        TP["Text Preprocessing Pipeline<br/>(Tokenization & Post-Padding to Max Length 15)"]
-    end
+    B1 --> C1["X_tabular: 30 Features"]
+    B2 --> C2["X_text: 15 Token IDs"]
 
-    subgraph EXPERTS["3. Expert Model Pool"]
-        XGB["Expert 1: XGBoost Classifier<br/>(100 Estimators, Depth 5, Logloss)"]
-        SVM["Expert 2: Support Vector Machine<br/>(RBF Kernel, Calibrated Probability)"]
-        ANN["Expert 3: Deep Neural Network<br/>(Dense 128-64-32 + BatchNorm + Dropout)"]
-        LLM["Expert 4: Local Phi-3 Mini 4-bit<br/>(Quantized GGUF / Sentiment Engine)"]
-    end
+    C1 --> D1["Concatenated Multimodal Vector (45-D)"]
+    C2 --> D1
 
-    subgraph ROUTER_BLOCK["4. Neural Gating Router"]
-        COMB["Concatenated Vector<br/>(30 Tabular + 15 Text = 45 Dimensions)"]
-        ROUTER["Neural Router Network<br/>(Dense 64-32 + Softmax Output)"]
-        WEIGHTS["Dynamic Model Weights<br/>(w_XGB, w_SVM, w_ANN, w_LLM)"]
-    end
+    D1 --> D2["Dense 64 with ReLU and BatchNorm"]
+    D2 --> D3["Dense 32 with ReLU and BatchNorm"]
+    D3 --> D4["Softmax Gating Layer (4 Outputs)"]
+    D4 --> D5["Temperature Scaling (T=2.5) + Context Scaling"]
+    D5 --> D6["Router Trust Weights (w1, w2, w3, w4)"]
 
-    subgraph AGGREGATION["5. Decision Fusion & Strategy Generation"]
-        ENSEMBLE["Final Churn Probability<br/>P_churn = Sum(w_i * p_i)"]
-        STRAT["Retention Strategy Generator<br/>(Contextual Next Best Action)"]
-    end
+    C1 --> E1["Expert 1: XGBoost Classifier"]
+    C1 --> E2["Expert 2: SVM (RBF Kernel)"]
+    C1 --> E3["Expert 3: Deep Neural Net"]
+    A2 --> E4["Expert 4: Local Phi-3 LLM"]
 
-    subgraph DASHBOARD["6. Enterprise Presentation Layer"]
-        UI["Streamlit Edge Dashboard<br/>• Risk Score & Status Badge<br/>• Plotly Weights Donut Chart<br/>• Model Confidence Progress Bars<br/>• Real-Time psutil Hardware Telemetry"]
-    end
+    E1 --> F1["Weighted Linear Fusion"]
+    E2 --> F1
+    E3 --> F1
+    E4 --> F1
+    D6 --> F1
 
-    CAD --> DP
-    CSN --> TP
-
-    DP --> XGB
-    DP --> SVM
-    DP --> ANN
-    TP --> LLM
-
-    DP --> COMB
-    TP --> COMB
-    COMB --> ROUTER
-    ROUTER --> WEIGHTS
-
-    XGB --> ENSEMBLE
-    SVM --> ENSEMBLE
-    ANN --> ENSEMBLE
-    LLM --> ENSEMBLE
-    WEIGHTS --> ENSEMBLE
-
-    CSN --> STRAT
-    ENSEMBLE --> STRAT
-
-    ENSEMBLE --> UI
-    WEIGHTS --> UI
-    STRAT --> UI
+    F1 --> F2["Final Churn Probability Score"]
+    A2 --> F3["Next Best Action Retention Copilot"]
 ```
 
 ---
 
-## The Prediction Models
+## 4. Technology Stack
 
-PRE 2.0 incorporates five specialized machine learning and deep learning models. The table below details their architectures, inputs, and functional responsibilities:
-
-| Model | Model Type | Input | Primary Responsibility |
-| :--- | :--- | :--- | :--- |
-| **XGBoost** | Gradient Boosted Decision Trees (`XGBClassifier`) | 30 Tabular Features (Scaled & One-Hot Encoded) | Identifies sharp non-linear thresholds and decision boundaries across billing metrics, contract types, and service subscriptions. |
-| **Support Vector Machine (SVM)** | Kernel Classifier (`SVC` with RBF Kernel & Probability Calibration) | 30 Tabular Features (Scaled & One-Hot Encoded) | Maximizes classification margin in high-dimensional continuous space, delivering reliable baseline predictions on boundary cases. |
-| **Deep Neural Network (ANN)** | 4-Layer Sequential Keras Network (128 → 64 → 32 → 1) with Batch Normalization & Dropout | 30 Tabular Features (Scaled & One-Hot Encoded) | Captures deep inter-feature dependencies and subtle interaction terms across complex account demographics. |
-| **Phi-3 Mini 4K Instruct** | 4-bit Quantized Small Language Model (`Q4_K_M` GGUF) / Heuristic Sentiment Fallback | Unstructured Support Notes (Raw Text) | Interprets customer sentiment, complaint urgency, and explicit cancellation threats from natural language interactions. |
-| **Neural Router** | Keras Gating Network (Input 45 → Dense 64 → Dense 32 → Softmax 4) | 45 Concatenated Features (30 Tabular + 15 Text Tokens) | Evaluates sample-level data quality to determine dynamic confidence weights for each expert model. |
-
----
-
-## Neural Router and Mixture of Experts
-
-### Why Soft Mixture of Experts?
-Standard ensemble techniques (such as hard majority voting or static averaging) treat all models equally regardless of input quality. If an account has empty support notes, tabular models should dominate. Conversely, when a customer explicitly states an intention to cancel, the language model should take precedence.
-
-### The Gating Mechanism
-1. **Target Formulation**: During training, the router is trained on soft targets derived from inverse absolute prediction errors across all experts:
-   
-   $$\text{Error}_i = |p_i - y_{\text{true}}|$$
-   
-   $$\text{Target}_i = \frac{\exp\left(\frac{1}{(\text{Error}_i + \epsilon) \cdot T_{\text{train}}}\right)}{\sum_j \exp\left(\frac{1}{(\text{Error}_j + \epsilon) \cdot T_{\text{train}}}\right)}$$
-
-2. **Temperature Scaling**: Standard softmax networks often collapse into hard one-hot distributions ($1.0$ vs $0.0$). In `inference.py`, PRE 2.0 applies temperature scaling ($T = 2.5$) over the router logits to maintain smooth, balanced contributions across models.
-3. **Dynamic Text Logit Boosting**: When meaningful textual feedback ($>5$ characters) is present, the router programmatically boosts the LLM logit relative to the top tabular model based on text length, ensuring customer complaints receive immediate operational focus.
+| Category | Technology | Usage in Project |
+|---|---|---|
+| **Programming Language** | Python 3.10+ | Core language environment |
+| **Machine Learning** | scikit-learn, XGBoost | Preprocessing transformers, SVM, XGBoost expert model |
+| **Data Resampling** | imbalanced-learn (SMOTE) | Synthetic oversampling for minority churn cases during training |
+| **Deep Learning** | TensorFlow / Keras | 3-layer expert ANN, 4-output neural router gating network |
+| **NLP & Text Execution** | Keras Tokenizer, Hugging Face Hub | Sequence vectorization, optional Phi-3 Mini 4K GGUF model download |
+| **Optional LLM Backends** | ctransformers, llama-cpp-python | On-device quantized GGUF inference |
+| **Dashboard Interface** | Streamlit, Plotly | Web interface, interactive donut charts, real-time metrics |
+| **Telemetry & System** | psutil | Host hardware utilization tracking (CPU, RAM, storage) |
+| **Persistence** | joblib | Serialization of pipelines, scalers, and scikit-learn models |
 
 ---
 
-## Retention Strategy Generation
+## 5. Machine Learning Architecture
 
-Beyond calculating churn probability, PRE 2.0 generates actionable business interventions tailored to the underlying problem.
+### 5.1 Dataset and Feature Engineering
 
-### 1. Large Language Model Mode (Phi-3 Mini)
-When the local GGUF model is loaded via `ctransformers` or `llama-cpp-python`, the engine constructs a focused prompt:
+The models are trained using the standard Telco Customer Churn dataset (7,043 customer records).
+
+- **Tabular Preprocessing**: Handled via `sklearn.compose.ColumnTransformer`.
+  - Numeric variables (`tenure`, `MonthlyCharges`, `TotalCharges`) are imputed using the median and scaled using `StandardScaler`. Missing total charges are filled with the column median.
+  - Categorical variables (16 attributes including contract type, internet service, payment method) are imputed using the most frequent strategy and encoded with `OneHotEncoder(drop='first')`.
+  - Result: 30 tabular features.
+- **Class Balancing**: Synthetic Minority Over-sampling Technique (SMOTE) is applied to the training split (`X_tab_train`) to equalize the churn (1) vs. retained (0) distribution before fitting the tabular experts.
+- **Text Sequence Processing**: Support notes are tokenized using `tensorflow.keras.preprocessing.text.Tokenizer` and padded to a maximum sequence length of 15 tokens.
+
+### 5.2 Individual Expert Models
+
+The system evaluates customer churn using four specialized models:
+
+- **Expert 1 — XGBoost Classifier (Tabular)**
+  - *Input*: 30 engineered tabular features
+  - *Configuration*: `n_estimators=100`, `max_depth=5`, `learning_rate=0.1`, `eval_metric='logloss'`
+  - *Output*: Probability score `p1` between 0.0 and 1.0
+
+- **Expert 2 — Support Vector Machine (Tabular)**
+  - *Input*: 30 engineered tabular features
+  - *Configuration*: Radial Basis Function (`kernel='rbf'`), `probability=True`, `C=1.0`
+  - *Output*: Probability score `p2` between 0.0 and 1.0
+
+- **Expert 3 — Deep Artificial Neural Network (Tabular)**
+  - *Input*: 30 engineered tabular features
+  - *Architecture*: 3 dense layers (`Dense(128)` -> `Dense(64)` -> `Dense(32)`) with Batch Normalization and Dropout (0.2-0.3), ending in a single sigmoid unit
+  - *Output*: Probability score `p3` between 0.0 and 1.0
+
+- **Expert 4 — Local Large Language Model (Text)**
+  - *Input*: Raw unstructured customer support text
+  - *Engine*: Microsoft Phi-3 Mini 4K Instruct (4-bit Q4_K_M GGUF, ~2.4 GB) with deterministic sentiment heuristic fallback
+  - *Output*: Probability score `p4` between 0.0 and 1.0
+
+### 5.3 Neural Router & Dynamic Weighting
+
+The router network determines how much trust to place in each expert for a given customer profile:
+
+- **Input Dimension**: Concatenated 45-dimensional vector containing 30 tabular features and 15 tokenized text sequence IDs.
+- **Network Architecture**: Two hidden dense layers (64 units and 32 units with ReLU activation, Batch Normalization, and Dropout), feeding a 4-unit softmax output layer.
+- **Soft Target Training**: The router is trained on inverse error distributions evaluated against ground truth:
 
 ```text
-You are a customer retention strategist. Based on this customer's support note, 
-suggest ONE short, actionable 'Next Best Action' to prevent churn. Keep it to 1-2 sentences.
-
-Note: "{Customer Support Note}"
-Retention strategy:
+error_i = |prediction_i - ground_truth|
+inv_error_i = 1.0 / (error_i + 0.05)
+target_weights = softmax(inv_error / 1.5)
 ```
 
-Outputs are automatically sanitized using regex filters to strip assistant tags (`<|assistant|>`), markdown headers, and conversational prefixes, ensuring flawless visual presentation.
+- **Inference Temperature Scaling (T = 2.5)**: To prevent overconfident single-expert dominance, router logits are softened:
 
-### 2. Built-In Heuristic Fallback Engine
-When operating in lightweight mode without local LLM runtimes, the system activates a rule-based engine mapping interaction keywords to proven retention actions:
+```text
+weights_i = exp(logit_i / 2.5) / sum(exp(logits / 2.5))
+```
 
-| Trigger Keywords | Operational Root Cause | Recommended Next Best Action |
-| :--- | :--- | :--- |
-| `price`, `fee`, `overcharge`, `bill`, `charge` | Billing & Pricing Friction | Offer a 15% loyalty discount across the next 3 billing cycles. |
-| `speed`, `slow`, `drop`, `outage`, `connection` | Technical Infrastructure Outage | Escalate to network engineering for priority diagnostics and a complimentary speed upgrade. |
-| `support`, `waiting`, `technician`, `help` | Service & Support Latency | Assign a dedicated account manager for proactive follow-ups within 24 hours. |
-| `cancel`, `quit`, `switch`, `leave` | Imminent Churn Threat | Initiate an urgent win-back call with an exclusive 12-month retention bundle at 20% off. |
-| `bad`, `worst`, `terrible`, `awful`, `horrible` | General Dissatisfaction | Provide a discretionary service credit and schedule a priority callback from senior support. |
+- **Dynamic Transcript Context Scaling**: If customer support text exceeds 5 characters, the qualitative text signal is prioritized by elevating the LLM logit relative to tabular experts:
+
+```text
+logit_llm = max(logit_tabular) + 1.5 + min(text_length / 40.0, 2.5)
+```
+
+### 5.4 Final Prediction & Retention Copilot
+
+The overall customer churn risk probability is computed as the weighted dot product:
+
+```text
+Ensemble Churn Probability = (w_xgb * p_xgb) + (w_svm * p_svm) + (w_ann * p_ann) + (w_llm * p_llm)
+```
+
+- **Classification Boundary**:
+  - `High Risk`: Ensemble probability >= 50%
+  - `Low Risk`: Ensemble probability < 50%
+- **Retention Copilot**: When notes are present, the LLM engine generates a concise, targeted Next Best Action retention offer based on customer complaints.
 
 ---
 
-## Dashboard Features
-
-The dashboard is built with a custom-engineered **Glassmorphism Dark Theme** designed for enterprise operations:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│               PROACTIVE RETENTION ENGINE 2.0 — DASHBOARD               │
-│               Real-Time Customer Churn Prediction & Edge MoE           │
-├────────────────────┬───────────────────────────────────────────────────┤
-│  CUSTOMER PROFILE  │  [ENSEMBLE RISK]    [CPU UTILIZATION]  [RAM USAGE]│
-│  • Demographics    │       84.2%               24.6%          3.8 GB   │
-│  • Account Terms   │     🔴 HIGH RISK        4C / 8T Cores   38% Used  │
-│  • Active Services ├─────────────────────────┬─────────────────────────┤
-│  • Billing Metrics │   ALGORITHMIC MIX       │  AI RETENTION STRATEGY  │
-│  • Support Notes   │   (Plotly Donut Chart)  │  [Next Best Action Card]│
-│                    │   • XGBoost:   22.4%    │  Offer a 15% loyalty    │
-│  [⚡ Run Analysis]  │   • SVM:       18.1%    │  rebate on the next 3   │
-│                    │   • Deep ANN:  25.3%    │  billing cycles.        │
-│  [📥 Download LLM] │   • Local LLM: 34.2%    │                         │
-│                    ├─────────────────────────┴─────────────────────────┤
-│                    │  INDIVIDUAL EXPERT CONFIDENCE BARS                │
-│                    │  🌲 XGBoost    [████████░░░░] 74.0%  (w=0.224)    │
-│                    │  📐 SVM        [███████░░░░░] 68.5%  (w=0.181)    │
-│                    │  🧠 Deep ANN   [█████████░░░] 81.2%  (w=0.253)    │
-│                    │  💬 Local LLM  [███████████░] 92.0%  (w=0.342)    │
-│                    ├───────────────────────────────────────────────────┤
-│                    │  HARDWARE TELEMETRY (Physical/Logical Cores, RAM) │
-└────────────────────┴───────────────────────────────────────────────────┘
-```
-
-- **Interactive Configuration Sidebar**: Real-time controls for customer tenure (0–72 months), contract terms, payment methods, telephone/internet services, monthly billing, and qualitative support notes.
-- **Ensemble Churn Probability Card**: High-contrast indicator displaying final fused risk percentage and status badge (**Low Risk < 50%** in emerald green, **High Risk ≥ 50%** in crimson red).
-- **Algorithmic Mix Donut Chart**: Plotly interactive visualization depicting exact percentage shares allocated by the Neural Router.
-- **Model Confidence Breakdown**: Linear visual meters tracking each expert's isolated churn assessment against its assigned weighting factor.
-- **Next Best Action Card**: Highlighted callout delivering clear guidance to customer support representatives.
-- **Hardware Telemetry Grid**: Direct integration with `psutil` reporting real-time CPU load, core topology, RAM consumption, and disk storage usage.
-- **One-Click GGUF Downloader**: Sidebar action button to download the 4-bit Phi-3 Mini GGUF model (~2.4 GB) directly from Hugging Face Hub.
-
----
-
-## Technology Stack
-
-The project relies on a production-grade Python ecosystem for scientific computing, deep learning, natural language processing, and interactive visualization:
-
-| Category | Technology | Version | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Language** | [Python](https://www.python.org/) | `>=3.10, <3.13` | Core programming runtime |
-| **Web Dashboard** | [Streamlit](https://streamlit.io/) | `>=1.28.0` | Reactive user interface and session management |
-| **Data Visualization** | [Plotly](https://plotly.com/) | `>=5.18.0` | High-fidelity interactive donut and distribution charts |
-| **System Telemetry** | [psutil](https://github.com/giampaolo/psutil) | `>=5.9.0` | Real-time monitoring of CPU cores, RAM, and disk utilization |
-| **Data Manipulation** | [Pandas](https://pandas.pydata.org/) | `>=2.0.0` | Tabular data structures, transformations, and cleaning |
-| **Numerical Computing** | [NumPy](https://numpy.org/) | `>=1.24.0` | Matrix mathematics and array vectorization |
-| **Scientific Routines** | [SciPy](https://scipy.org/) | `>=1.11.0` | Softmax scaling and temperature calculations |
-| **Machine Learning** | [Scikit-Learn](https://scikit-learn.org/) | `>=1.3.0` | Pipeline management, StandardScaler, OneHotEncoder, SVM |
-| **Gradient Boosting** | [XGBoost](https://xgboost.ai/) | `>=2.0.0` | Regularized tree boosting classifier (`XGBClassifier`) |
-| **Class Balancing** | [Imbalanced-Learn](https://imbalanced-learn.org/) | `>=0.11.0` | Synthetic Minority Over-sampling Technique (SMOTE) |
-| **Model Serialization** | [Joblib](https://joblib.readthedocs.io/) | `>=1.3.0` | Persistence for scikit-learn pipelines and model weights |
-| **Deep Learning** | [TensorFlow / Keras](https://www.tensorflow.org/) | `>=2.13.0` | Multi-layer Perceptron (ANN) and Neural Gating Router |
-| **Model Distribution** | [Hugging Face Hub](https://huggingface.co/) | `>=0.20.0` | Automated download management for quantized GGUF artifacts |
-| **Quantized LLM Engine** | [ctransformers](https://github.com/marella/ctransformers) / [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) | *Optional* | Local C++ GGUF inference runtimes for Phi-3 Mini |
-
----
-
-## Project Structure
-
-Below is the verified layout of the repository root and its key operational components:
+## 6. Project Directory Structure
 
 ```
 pbl 2/
 ├── .streamlit/
-│   └── config.toml                  # Streamlit dark theme & headless server configuration
-├── app.py                           # Streamlit enterprise dashboard & hardware monitoring
-├── inference.py                     # Hybrid MoE inference pipeline & ensemble logic
-├── model_training.py                # Multi-expert & Neural Router training script
-├── preprocessing.py                 # Shared data pipelines, tokenization, & synthetic text
-├── pbl2_prep.py                     # 4-phase data preparation & verification script
-├── requirements.txt                 # Core project dependencies specification
-├── requirement.txt                  # Compatibility alias for requirements.txt
-├── LICENSE                          # MIT Open Source License file
-├── .gitignore                       # Rules excluding GGUF models, caches, and environments
-│
-├── [Trained Model Artifacts]
-│   ├── expert_xgb.pkl               # Serialized trained XGBoost classifier (Joblib)
-│   ├── expert_svm.pkl               # Serialized trained Support Vector Classifier (Joblib)
-│   ├── expert_ann.h5                # Trained Keras Deep Neural Network weights (HDF5)
-│   ├── router_model.h5              # Trained Keras Neural Gating Router weights (HDF5)
-│   ├── tabular_pipeline.pkl         # Fitted ColumnTransformer (Imputer + Scaler + Encoder)
-│   ├── tokenizer.pkl                # Fitted Keras text Tokenizer for support notes
-│   ├── feature_names.pkl            # Ordered list of 30 engineered tabular features
-│   └── scaler.pkl                   # Legacy standalone StandardScaler artifact
-│
-└── [Quantized Language Model]
-    └── Phi-3-mini-4k-instruct-Q4_K_M.gguf  # 4-bit quantized Phi-3 model (~2.4 GB, local)
+│   └── config.toml               # Streamlit theme and server configuration
+├── assets/
+│   ├── dashboard_overview.png    # Landing interface state
+│   ├── high_risk_prediction.png  # Prediction result: High-risk scenario
+│   ├── low_risk_prediction.png   # Prediction result: Low-risk scenario
+│   ├── moe_metrics_and_weights.png # Weight distribution and telemetry
+│   └── moe_prediction_result.png # Overall MoE prediction preview
+├── app.py                        # Streamlit dashboard implementation
+├── expert_ann.h5                 # Serialized Keras Deep ANN expert model
+├── expert_svm.pkl                # Serialized scikit-learn SVM expert model
+├── expert_xgb.pkl                # Serialized XGBoost expert model
+├── feature_names.pkl             # List of 30 processed feature names
+├── inference.py                  # End-to-end inference and gating functions
+├── LICENSE                       # MIT License
+├── model_training.py             # Script to train 4 experts and neural router
+├── pbl2_prep.py                  # Step-by-step preprocessing execution script
+├── preprocessing.py              # Data cleaning, encoding, tokenization pipeline
+├── requirements.txt              # Project Python package dependencies
+├── router_model.h5               # Serialized Keras Neural Router model
+├── tabular_pipeline.pkl          # ColumnTransformer for tabular features
+└── tokenizer.pkl                 # Keras Tokenizer for support notes
 ```
-
-### Key Module Descriptions
-- **`app.py`**: Entry-point for the web dashboard. Implements custom CSS glassmorphism, responsive column layouts, Plotly charting, and background hardware sampling.
-- **`inference.py`**: Production inference module. Implements `prepare_inputs()`, `get_router_weights()`, `get_expert_predictions()`, and `ensemble_predict()`.
-- **`model_training.py`**: End-to-end training orchestrator. Fetches data, applies SMOTE class balancing, fits all models, creates soft router targets, and serializes artifacts.
-- **`preprocessing.py`**: Defines standard schemas (`NUMERIC_FEATURES`, `CATEGORICAL_FEATURES`), data cleaning routines, and text sequence padding.
-- **`pbl2_prep.py`**: A clean verification utility that executes data cleaning, scaling, synthetic note generation, and tokenization with structured terminal checkpoints.
 
 ---
 
-## Installation and Setup
+## 7. Results and Evaluation
+
+### 7.1 Expert Model Evaluation (Held-Out Test Set)
+
+Models were evaluated on a stratified 20% test partition (1,409 customer samples) of the Telco Churn dataset:
+
+| Model Architecture | Input Modality | Accuracy | Precision (Churn) | Recall (Churn) | F1-Score (Churn) | ROC-AUC |
+|---|---|---|---|---|---|---|
+| **XGBoost Classifier** | 30 Tabular Features | 77.79% | 57.31% | 63.90% | 60.43% | **0.8396** |
+| **SVM (RBF Kernel)** | 30 Tabular Features | 75.37% | 52.55% | **74.33%** | **61.57%** | 0.8221 |
+| **Deep Neural Network** | 30 Tabular Features | 76.37% | 54.32% | 68.98% | 60.78% | 0.8257 |
+
+*Note: Models were trained on SMOTE-balanced tabular training data to emphasize recall on the minority churn class. The local LLM expert operates on unstructured customer notes and is weighted contextually via the neural router.*
+
+### 7.2 Router Behavior Across Scenarios
+
+| Operational Scenario | Representative Customer Profile | Dominant Expert Influences | Final Score |
+|---|---|---|---|
+| **High Churn Risk** | Month-to-month contract, fiber optic, tenure < 3 months, negative note ("unreliable service, cancelling") | Local LLM (~38%) + SVM (~25%) + XGBoost (~20%) | **86.7%** (High Risk) |
+| **Low Churn Risk** | Two-year contract, DSL, tenure > 60 months, positive note ("service is reliable and fast") | Balanced across tabular models (~28% each) + LLM (~15%) | **27.4%** (Low Risk) |
+
+---
+
+## 8. Dashboard Preview
+
+### 8.1 System Interface Overview
+![Dashboard Overview](assets/dashboard_overview.png)
+*Initial dashboard state displaying customer input controls across demographics, billing, subscription services, and interaction text.*
+
+### 8.2 Prediction and Algorithmic Distribution
+![Prediction Result](assets/moe_prediction_result.png)
+*MoE prediction breakdown indicating combined churn probability, dynamically allocated router weights, individual expert forecasts, and next-best-action guidance.*
+
+### 8.3 High-Risk Scenario
+![High Risk Prediction](assets/high_risk_prediction.png)
+*Customer profile evaluating an urgent risk scenario with support text escalations, driving elevated weighting to the LLM sentiment component.*
+
+### 8.4 Low-Risk Scenario
+![Low Risk Prediction](assets/low_risk_prediction.png)
+*Customer profile demonstrating sustained account tenure and multi-year contract stability yielding a low churn probability.*
+
+---
+
+## 9. Installation and Setup
 
 ### Prerequisites
-- **Python**: Version `3.10`, `3.11`, or `3.12` installed.
-- **Git**: Installed and available in your system path.
-- **Memory**: Minimum 4 GB RAM (8 GB+ recommended if running the GGUF LLM).
+- Python 3.10 or 3.11
+- Git
+- 4 GB RAM minimum (8 GB recommended if running the 4-bit local LLM)
 
-### 1. Clone the Repository
+### 1. Clone Repository
 ```bash
-git clone <YOUR_REPOSITORY_URL>
+git clone https://github.com/ayush-kaushik/proactive-retention-engine.git
 cd "pbl 2"
 ```
 
-### 2. Create and Activate a Virtual Environment
-
-**Option A: Using standard Python `venv`**
-
-- **Windows (PowerShell)**:
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\Activate.ps1
-  ```
-- **Windows (Command Prompt)**:
-  ```cmd
-  python -m venv venv
-  .\venv\Scripts\activate.bat
-  ```
-- **macOS / Linux**:
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  ```
-
-**Option B: Using Conda**
+### 2. Set Up Virtual Environment
+Using `venv`:
 ```bash
-conda create -n pre-engine python=3.10 -y
-conda activate pre-engine
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux / macOS:
+source venv/bin/activate
+```
+
+Or using `conda`:
+```bash
+conda create -n pbl python=3.10 -y
+conda activate pbl
 ```
 
 ### 3. Install Dependencies
-Install all required libraries using `pip`:
 ```bash
 pip install -r requirements.txt
 ```
 
-*(Optional)* If you wish to execute the local Phi-3 Mini model using hardware-accelerated C++ runtimes rather than the built-in sentiment engine:
-```bash
-pip install ctransformers>=0.2.27
-# OR
-pip install llama-cpp-python>=0.2.55
-```
+### 4. (Optional) Local GGUF LLM Setup
+The project runs out-of-the-box using the built-in rule-based text heuristic. To enable on-device GGUF LLM inference using Microsoft Phi-3 Mini 4K Instruct:
+1. Install an inference backend:
+   ```bash
+   pip install ctransformers>=0.2.27
+   # Or install llama-cpp-python:
+   pip install llama-cpp-python>=0.2.55
+   ```
+2. Download the model file (`Phi-3-mini-4k-instruct-Q4_K_M.gguf`, ~2.4 GB) directly using the in-app sidebar download button, or place it into the project root directory manually from Hugging Face (`bartowski/Phi-3-mini-4k-instruct-GGUF`).
 
 ---
 
-## Running the Application
+## 10. Usage
 
-### 1. Execute the Inference Self-Test
-Verify that all model weights, pipelines, and routing mathematics execute cleanly:
-```bash
-python inference.py
-```
-This runs automated predictions across two distinct customer scenarios (an at-risk month-to-month subscriber and a loyal long-term subscriber) and outputs router weights to the terminal.
-
-### 2. Launch the Streamlit Dashboard
-Start the web dashboard locally:
+### Launch the Application
+Run the Streamlit server from the project directory:
 ```bash
 streamlit run app.py
 ```
-Once the server initializes, open your browser and navigate to:
-```text
-http://localhost:8501
-```
+The application will open in your default browser at `http://localhost:8501`.
 
-### 3. Verify Preprocessing Pipeline
-To inspect the 4-phase feature transformations without retraining:
+### Operating the Dashboard
+1. **Configure Customer Profile**: Adjust demographic selectors, contract type, tenure, services, and monthly billing figures in the left sidebar.
+2. **Input Interaction Notes**: Enter relevant customer interaction logs or recent support notes in the text box.
+3. **Execute Analysis**: Click **Run MoE Analysis** to run the preprocessing transformers, query the experts, and compute router weights.
+4. **Inspect Metrics**:
+   - Review overall churn probability and classification tag.
+   - Examine the interactive donut chart showing individual expert weight allocation.
+   - Inspect individual probability predictions across XGBoost, SVM, Deep ANN, and LLM components.
+   - Read the generated **Next Best Action** for customer retention.
+   - Monitor real-time system hardware telemetry in the bottom monitor panel.
+
+### Re-training the Models
+To re-run the full pipeline, generate synthetic support notes, apply SMOTE, and re-train all models:
 ```bash
+# Optional step-by-step preprocessing preview:
 python pbl2_prep.py
-```
 
----
-
-## Model Training
-
-All model artifacts are pre-trained and included in the repository. If you wish to retrain all experts and the Neural Router from scratch:
-
-```bash
+# Full model and neural router training:
 python model_training.py
 ```
 
-### What Happens During Training:
-1. **Dataset Ingestion**: Automatically downloads the standard Telco Customer Churn dataset (7,043 customer records).
-2. **Data Cleaning**: Coerces `TotalCharges` to numeric and imputes missing values using the median.
-3. **Synthetic Note Synthesis**: Generates paired customer feedback notes conditioned on churn labels to simulate real-world support ticket archives.
-4. **Train/Test Splitting**: Stratified 80/20 train/test split preserving churn class ratios.
-5. **Class Imbalance Balancing**: Applies **SMOTE** (Synthetic Minority Over-sampling Technique) to tabular training data, balancing churned and retained classes.
-6. **Expert Fitting**:
-   - Trains **XGBoost** with logloss early evaluation.
-   - Trains **Support Vector Classifier (SVM)** with Platt probability calibration.
-   - Trains the **Deep Artificial Neural Network (ANN)** for 50 epochs with `EarlyStopping` (patience = 5).
-7. **Soft Target Calculation**: Runs all training samples through the fitted experts to generate inverse-error softmax targets.
-8. **Neural Router Training**: Fits the 4-output gating network using categorical cross-entropy.
-9. **Artifact Serialization**: Saves all `.pkl` and `.h5` files directly into the repository root.
+---
+
+## 11. Current Limitations and Roadmap
+
+- **Synthetic Text Preprocessing**: In the default training script, support notes are synthesized across fixed positive and negative templates mapped to churn labels. Training against organic, diverse customer transcripts will further improve LLM calibration.
+- **Router Gating Dimensionality**: The neural router currently uses token IDs padded to length 15 alongside tabular inputs. Moving to dense semantic text embeddings (e.g., sentence-transformers) will provide stronger semantic routing signals.
+- **LLM Execution Dependencies**: Running quantized GGUF weights on Windows can require precompiled C++ wheels for `llama-cpp-python` depending on the environment. The included heuristic fallback ensures graceful degradation when binary dependencies are missing.
+- **Batch Inference Pipeline**: The current dashboard is designed for single-customer ad-hoc assessment; future releases will introduce batch CSV scoring and REST API endpoints.
 
 ---
 
-## Model Files and Large Language Model Setup
+## 12. License
 
-### Serialized Model Artifacts
-The repository root contains the exact weights required for offline execution:
-
-| File | Size | Format | Description |
-| :--- | :--- | :--- | :--- |
-| `expert_xgb.pkl` | ~210 KB | Joblib Pickle | Trained XGBoost gradient boosted tree ensemble |
-| `expert_svm.pkl` | ~1.08 MB | Joblib Pickle | Trained Support Vector Classifier support vectors |
-| `expert_ann.h5` | ~243 KB | Keras HDF5 | 4-layer Deep Neural Network architecture & weights |
-| `router_model.h5` | ~111 KB | Keras HDF5 | Neural Gating Router architecture & weights |
-| `tabular_pipeline.pkl` | ~8 KB | Joblib Pickle | Scikit-learn transformer (imputation, scaling, one-hot encoding) |
-| `tokenizer.pkl` | ~3 KB | Joblib Pickle | Keras text tokenizer fit on support feedback vocabulary |
-| `feature_names.pkl` | ~1 KB | Joblib Pickle | 30 ordered feature column identifiers |
-
-### Large Language Model (Phi-3 Mini 4K Instruct)
-- **Model Tag**: `bartowski/Phi-3-mini-4k-instruct-GGUF`
-- **Weight Quantization**: `Phi-3-mini-4k-instruct-Q4_K_M.gguf` (~2.39 GB)
-- **Local Availability**: The quantized file is stored locally in the project directory for offline edge execution.
-- **Git Version Control**: Because GitHub enforces a 100 MB hard limit on individual files, `*.gguf` is recorded in `.gitignore`.
-- **Automated In-App Download**: If the GGUF file is ever missing, click the **📥 Download Phi-3 GGUF** button in the dashboard sidebar, or invoke `_download_gguf()` programmatically via `model_training.py`.
-
----
-
-## Frequently Asked Questions
-
-#### Q: Do I need a dedicated GPU (CUDA) to run PRE 2.0?
-**A:** No. All three tabular models (XGBoost, SVM, Deep ANN) and the Neural Router run with sub-10ms latency on modern CPUs. The Phi-3 Mini model is quantized to 4-bit precision (`Q4_K_M`), enabling CPU execution with minimal RAM footprint.
-
-#### Q: Will the application function if I do not install `ctransformers` or `llama-cpp-python`?
-**A:** Yes. The application is built with a resilient fallback architecture. If local GGUF runtimes are not found, PRE 2.0 activates its internal keyword-driven sentiment analysis and retention strategy engine without throwing errors.
-
-#### Q: Is any customer data sent to third-party APIs (e.g., OpenAI or Anthropic)?
-**A:** None. PRE 2.0 is designed for strictly on-premises and edge deployments. All feature scaling, neural gating, and language model inferences execute locally inside your Python runtime.
-
-#### Q: Can I retrain the engine on custom enterprise datasets?
-**A:** Yes. Update the column definitions (`NUMERIC_FEATURES`, `CATEGORICAL_FEATURES`) in `preprocessing.py` to match your enterprise schema, replace `DATA_URL` or load a local CSV, and run `python model_training.py`.
-
----
-
-## Limitations and Future Improvements
-
-- **Synthetic Text Corpus**: In the baseline training routine, customer support notes are synthetically linked to churn labels. Future iterations will incorporate real-world CRM helpdesk ticket archives.
-- **LLM Token Latency on Edge CPUs**: While 4-bit quantization allows Phi-3 Mini to run on CPUs, generation of long strategies may take 3–8 seconds depending on single-core CPU speeds.
-- **CRM Integration**: Developing bi-directional webhooks for Salesforce, HubSpot, and Zendesk to pull live ticket text and push predicted retention tasks directly into representative queues.
-- **Temporal Churn Forecasting**: Expanding the architecture to process time-series monthly usage snapshots using Recurrent Neural Networks (LSTM/GRU) or Temporal Fusion Transformers.
-
----
-
-## License
-
-This project is licensed under the terms of the [MIT License](LICENSE).
-
-```text
-Copyright (c) 2026 Ayush Kaushik
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
