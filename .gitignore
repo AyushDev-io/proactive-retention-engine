@@ -1,0 +1,36 @@
+# ==========================================
+# Large Language Model Weights (>100MB limit)
+# Note: Phi-3-mini-4k-instruct-Q4_K_M.gguf is ~2.4GB.
+# Downloaded dynamically via Hugging Face Hub or runs via built-in fallback.
+# ==========================================
+*.gguf
+.cache/
+
+# ==========================================
+# Python Bytecode & Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ==========================================
+# Streamlit & Local Secrets
+# ==========================================
+.streamlit/secrets.toml
+
+# ==========================================
+# IDE & System Files
+# ==========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
